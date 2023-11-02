@@ -121,7 +121,7 @@ class Source:
             if os.path.isfile(file_path) and not self.no_internet: # It's pointless to check the checksum if we can't redownload it
                 with open(file_path, 'rb') as in_file:
                     local_hash = md5(in_file.read()).hexdigest()
-                if local_hash != cptac.INDEX.loc[cptac.INDEX['filename']==prefixed_file, 'checksum'].item():
+                if local_hash != cptac.INDEX.loc[cptac.INDEX['filename']==prefixed_file, 'checksum'].item().split("md5:")[-1]:
                     warn(FailedChecksumWarning("Local file and online file have different checksums; redownloading data"))
                     os.remove(file_path)
 
