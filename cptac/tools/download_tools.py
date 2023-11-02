@@ -16,7 +16,6 @@ ZENO_TOKEN = 'GijLB8joEFbeVEBQsjtJ8rH1uXMK8p5REgkNTfgHCMSR5LDyisZiZx1BRPQT'
 AUTH_HEADER = {'Authorization': 'Bearer ' + ZENO_TOKEN}
 BUCKET=None
 
-
 def fetch_repo_data() -> dict:
     """Fetches the repo data from Zenodo, including metadata and file links."""
     repo_link = "https://zenodo.org/api/records/8394329"   #TODO This should be updated to use the RECORD_ID like before
@@ -46,9 +45,9 @@ def init_files() -> None:
         index_data = []
         index_data.append(f"description\tfilename\tchecksum")
         for data_file in repo_data['files']:
-            if data_file['filename'].startswith('.'):
+            if data_file['key'].startswith('.'):
                 continue # ignore hidden files
-            filename_list = data_file['filename'].split('-')
+            filename_list = data_file['key'].split('-')
             description = '-'.join(filename_list[:3])
             index_data.append(f"{description}\t{'-'.join(filename_list)}\t{data_file['checksum']}")
         with open(index_path, 'w') as index_file:
@@ -56,7 +55,7 @@ def init_files() -> None:
         # Download some other necessart files
         if not os.path.isfile(acetyl_mapping_path):
             for num in range(0, len(repo_data['files']) - 1):
-                if BUCKET[num]['filename'] == 'cptac_genes.csv':
+                if BUCKET[num]['key'] == 'cptac_genes.csv':
                     get_data("https://zenodo.org/api/records/8394329/files/cptac_genes.csv/content", acetyl_mapping_path)
         if not os.path.isfile(brca_mapping_path):
             get_data("https://zenodo.org/api/records/8394329/files/brca_mapping.csv/content", brca_mapping_path)
@@ -98,12 +97,12 @@ def download(cancer: str, source: str, dtype: str, data_file: str) -> bool:
     output_file = os.path.join(output_dir, data_file)
     # Error handling for different exceptions
     try:
-        repo_data = fetch_repo_data()
+        #repo_data = fetch_repo_data()
         get_data(f"https://zenodo.org/api/records/8394329/files/{file_name}/content", output_file)
         # Verify checksum
         with open(os.path.join(DATA_DIR, output_file), 'rb') as data_file:
             local_hash = md5(data_file.read()).hexdigest()
-        if local_hash != cptac.INDEX.query("filename == @file_name")['checksum'].item():
+        if local_hash != cptac.INDEX.query("filename == @file_name")['checksum'].item().split("md5:")[-1]:
             os.remove(os.path.join(DATA_DIR, output_file))
             raise DownloadFailedError("Download failed: local and remote files do not match. Please try again.")
         return True
@@ -163,8 +162,8 @@ def get_data(url: str, subfolder: str = '', num_threads: int = 4) -> str:
 
     file_name = url.split('/')[-2]
     for num in range(0, len(repo_data['files'])):
-        if repo_data['files'][num]['filename'] == file_name:
-            file_size = repo_data['files'][num]['filesize']
+        if repo_data['files'][num]['key'] == file_name:
+            file_size = repo_data['files'][num]['size']
             break
 
     chunk_size = file_size // num_threads
